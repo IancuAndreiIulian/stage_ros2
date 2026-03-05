@@ -24,7 +24,7 @@ def generate_launch_description():
         'use_ackermann',
         default_value='true',
         description='on true stage will accept AckermannDrive or AckermannDriveStamped command messages')
-    
+
     stage_world_arg = DeclareLaunchArgument(
         'world',
         default_value=TextSubstitution(text='street'),
@@ -35,7 +35,7 @@ def generate_launch_description():
         'enforce_prefixes',
         default_value='false',
         description='on true a prefixes are used for a single robot environment')
-    
+
     use_static_transformations = LaunchConfiguration('use_static_transformations')
     use_static_transformations_arg = DeclareLaunchArgument(
         'use_static_transformations',
@@ -47,8 +47,9 @@ def generate_launch_description():
         'one_tf_tree',
         default_value='false',
         description='on true all tfs are published with a namespace on /tf and /tf_static')
-    
+
     def stage_world_configuration(context):
+
         file = os.path.join(
             this_directory,
             'world',
@@ -61,9 +62,9 @@ def generate_launch_description():
         use_stamped_velocity_arg,
         use_ackermann_arg,
         stage_world_arg,
-        one_tf_tree_arg, 
-        enforce_prefixes_arg, 
-        use_static_transformations_arg, 
+        one_tf_tree_arg,
+        enforce_prefixes_arg,
+        use_static_transformations_arg,
         stage_world_configuration_arg,
         Node(
             package='stage_ros2',

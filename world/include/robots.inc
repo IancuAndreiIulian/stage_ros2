@@ -21,6 +21,27 @@ define hokuyolaser ranger
   )
 )
 
+define full_scan ranger
+(
+  sensor(       
+    # laser-specific properties
+    # factory settings for LMS200  
+    pose [ 0 0 0 0 ]
+    size [ 0.07 0.07 0.05 ]
+    range [ 0.0  5.0 ]
+    fov 360.0
+    samples 360 
+    color_rgba [ 0 0 1 0.15 ]
+  )
+  model
+  (
+    # generic model properties
+    pose [ 0.0 0.0 -0.2 0.0 ]
+    size [ 0.07 0.07 0.05 ]  
+    color "blue"
+  )
+)
+
 define camera_realsens_d435 camera
 (
 	range [ 0.3 3.0 ]
@@ -54,7 +75,7 @@ define qrcodereader fiducial
 define pioneer2dx_with_laser pioneer2dx_no_sonar 
 (
   # can refer to the robot by this name
-  hokuyolaser(pose [ 0.15 0 0 0 ])
+  full_scan(pose [ 0.15 0 0 0 ])
   model
   (
     # generic model properties

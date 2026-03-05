@@ -64,7 +64,7 @@ define mount model
 )
 
 # throw in a block
-my_block( pose [ 5 4 0 180.000 ] color "green")
+# my_block( pose [ 5 4 0 180.000 ] color "green")
 
 # throw in a robot
 pioneer2dx_with_laser 

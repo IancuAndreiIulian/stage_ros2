@@ -63,7 +63,7 @@ void Vehicle::init(bool use_topic_prefixes, bool use_one_tf_tree)
 
   frame_id_base_link_ = frame_name_space_ + node_->frame_id_base_link_name_;
   frame_id_odom_ = frame_name_space_ + node_->frame_id_odom_name_;
-  frame_id_world_ = frame_name_space_ + node_->frame_id_world_name_;
+  frame_id_world_ = node_->frame_id_world_name_;
 
   topic_name_odom_ = topic_name_space_ + TOPIC_ODOM;
   topic_name_ground_truth_ = topic_name_space_ + TOPIC_GROUND_TRUTH;
