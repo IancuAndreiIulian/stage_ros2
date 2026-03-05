@@ -62,9 +62,9 @@ def generate_launch_description():
         use_stamped_velocity_arg,
         use_ackermann_arg,
         stage_world_arg,
-        one_tf_tree_arg, 
-        enforce_prefixes_arg, 
-        use_static_transformations_arg, 
+        one_tf_tree_arg,
+        enforce_prefixes_arg,
+        use_static_transformations_arg,
         stage_world_configuration_arg,
         Node(
             package='stage_ros2',

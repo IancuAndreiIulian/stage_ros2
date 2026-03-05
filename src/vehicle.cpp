@@ -193,20 +193,31 @@ void Vehicle::publish_msg()
 }
 void Vehicle::publish_tf()
 {
+  // Compute odom -> base_link from estimated (odometry) pose
+  tf2::Quaternion q_odom;
+  q_odom.setRPY(0.0, 0.0, positionmodel->est_pose.a);
+  tf2::Transform T_odom_base(q_odom,
+    tf2::Vector3(positionmodel->est_pose.x, positionmodel->est_pose.y, 0.0));
 
-  // broadcast odometry transform
-  tf2::Quaternion quaternion = tf2::Quaternion(
-      msg_odom_.pose.pose.orientation.x,
-      msg_odom_.pose.pose.orientation.y,
-      msg_odom_.pose.pose.orientation.z,
-      msg_odom_.pose.pose.orientation.w);
-  tf2::Transform transform(quaternion,
-                           tf2::Vector3(msg_odom_.pose.pose.position.x, msg_odom_.pose.pose.position.y, 0.0));
   tf_broadcaster_->sendTransform(
-      StageNode::create_transform_stamped(
-          transform, node_->sim_time_,
-          frame_id_odom_,
-          frame_id_base_link_));
+    StageNode::create_transform_stamped(
+      T_odom_base, node_->sim_time_,
+      frame_id_odom_, frame_id_base_link_));
+
+  // Compute world -> odom = T_world_base * T_odom_base^(-1)
+  // This places the odom frame correctly in the world so the robot
+  // appears at its true ground-truth position on the map.
+  Stg::Pose gpose = positionmodel->GetGlobalPose();
+  tf2::Quaternion q_world;
+  q_world.setRPY(0.0, 0.0, gpose.a);
+  tf2::Transform T_world_base(q_world, tf2::Vector3(gpose.x, gpose.y, 0.0));
+
+  tf2::Transform T_world_odom = T_world_base * T_odom_base.inverse();
+
+  tf_broadcaster_->sendTransform(
+    StageNode::create_transform_stamped(
+      T_world_odom, node_->sim_time_,
+      frame_id_world_, frame_id_odom_));
 }
 
 void Vehicle::check_watchdog_timeout()

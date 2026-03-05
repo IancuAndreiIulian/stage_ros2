@@ -204,7 +204,6 @@ int StageNode::callback_update_stage_world(Stg::World * world, StageNode * node)
 
   std::scoped_lock lock(node->msg_lock);
 
-
   node->sim_time_ = rclcpp::Time(world->SimTimeNow() * 1e3);
   // We're not allowed to publish clock==0, because it used as a special
   // value in parts of ROS, #4027.
@@ -295,6 +294,17 @@ int StageNode::SubscribeModels()
   // create the clock publisher
   clock_pub_ = this->create_publisher<rosgraph_msgs::msg::Clock>("/clock", 10);
 
+  // create the map publisher with transient local QoS so late-joining subscribers receive the map
+  auto map_qos = rclcpp::QoS(rclcpp::KeepLast(1));
+  map_qos.transient_local();
+  map_qos.reliable();
+  map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", map_qos);
+
+  // create timer to publish map every 1 second
+  using namespace std::chrono_literals;
+  map_publish_timer_ = this->create_wall_timer(
+    1000ms, std::bind(&StageNode::PublishMap, this));
+
   // advertising reset service
   srv_reset_ = this->create_service<std_srvs::srv::Empty>(
     "reset_positions",
@@ -344,6 +354,120 @@ geometry_msgs::msg::Pose StageNode::createGeometryPose(const Stg::Pose &src)
   des.position.z = src.z;
   des.orientation = createQuaternionMsgFromYaw(src.a);
   return des;
+}
+
+void StageNode::PublishMap()
+{
+  if (!this->world) {
+    RCLCPP_WARN(this->get_logger(), "World not available for map publishing");
+    return;
+  }
+
+  // Get the world extent and resolution
+  const Stg::bounds3d_t& extent = this->world->GetExtent();
+  double ppm = this->world->Resolution();  // pixels per meter
+  double resolution = 1.0 / ppm;  // meters per pixel
+
+  if (extent.x.max <= extent.x.min || extent.y.max <= extent.y.min) {
+    RCLCPP_WARN(this->get_logger(), "Invalid world extent, cannot publish map");
+    return;
+  }
+
+  // Calculate map dimensions
+  unsigned int width = static_cast<unsigned int>((extent.x.max - extent.x.min) * ppm);
+  unsigned int height = static_cast<unsigned int>((extent.y.max - extent.y.min) * ppm);
+
+  if (width == 0 || height == 0) {
+    RCLCPP_WARN(this->get_logger(), "Map dimensions are zero, cannot publish map");
+    return;
+  }
+
+  // Create occupancy grid message
+  nav_msgs::msg::OccupancyGrid map_msg;
+  // Use wall clock time instead of sim_time for static map compatibility with RViz
+  map_msg.header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
+  map_msg.header.frame_id = this->frame_id_world_name_;
+
+  map_msg.info.resolution = resolution;
+  map_msg.info.width = width;
+  map_msg.info.height = height;
+  map_msg.info.origin.position.x = extent.x.min;
+  map_msg.info.origin.position.y = extent.y.min;
+  map_msg.info.origin.position.z = 0.0;
+  map_msg.info.origin.orientation.w = 1.0;
+
+  // Allocate world raster buffer
+  std::vector<uint8_t> world_raster(width * height, 0);
+
+  // Returns true if the model is a robot or any descendant of one
+  auto is_robot_or_child = [](Stg::Model * m) {
+    while (m) {
+      if (dynamic_cast<Stg::ModelPosition *>(m)) return true;
+      m = m->Parent();
+    }
+    return false;
+  };
+
+  // Rasterize each static model into its own local buffer, then copy
+  // it into the world buffer at the correct world-space offset.
+  // (Stage's Rasterize works in model-local coords, so we must apply
+  //  the model's global pose ourselves.)
+  for (Stg::Model* model : this->world->GetAllModels()) {
+    // Skip robots and all their child models (body, sensors, etc.)
+    if (is_robot_or_child(model)) {
+      continue;
+    }
+
+    Stg::Geom geom = model->GetGeom();
+    if (geom.size.x <= 0 || geom.size.y <= 0) {
+      continue;
+    }
+
+    unsigned int model_w = static_cast<unsigned int>(geom.size.x * ppm);
+    unsigned int model_h = static_cast<unsigned int>(geom.size.y * ppm);
+    if (model_w == 0 || model_h == 0) {
+      continue;
+    }
+
+    // Rasterize the model in its own local buffer
+    std::vector<uint8_t> model_raster(model_w * model_h, 0);
+    model->Rasterize(model_raster.data(), model_w, model_h, resolution, resolution);
+
+    // Model bottom-left corner in world coordinates
+    Stg::Pose gpose = model->GetGlobalPose();
+    double model_world_x = gpose.x - geom.size.x / 2.0;
+    double model_world_y = gpose.y - geom.size.y / 2.0;
+
+    // Offset of the model's bottom-left in the world buffer (in cells)
+    int ox = static_cast<int>((model_world_x - extent.x.min) * ppm);
+    int oy = static_cast<int>((model_world_y - extent.y.min) * ppm);
+
+    // Copy model raster into world raster at the correct offset
+    for (unsigned int my = 0; my < model_h; my++) {
+      for (unsigned int mx = 0; mx < model_w; mx++) {
+        int wx = ox + static_cast<int>(mx);
+        int wy = oy + static_cast<int>(my);
+        if (wx >= 0 && wx < static_cast<int>(width) &&
+            wy >= 0 && wy < static_cast<int>(height)) {
+          if (model_raster[mx + my * model_w] > 0) {
+            world_raster[wx + wy * width] = model_raster[mx + my * model_w];
+          }
+        }
+      }
+    }
+  }
+
+  // Convert to ROS occupancy grid (Stage: 0=free, non-zero=occupied)
+  map_msg.data.resize(width * height);
+  for (unsigned int i = 0; i < width * height; i++) {
+    map_msg.data[i] = (world_raster[i] > 0) ? 100 : 0;
+  }
+
+  // Publish the map
+  map_pub_->publish(map_msg);
+  // RCLCPP_INFO(this->get_logger(),
+  //   "Published occupancy grid map: %dx%d cells, resolution %.3f m/cell",
+  //   width, height, resolution);
 }
 
 }  // namespace stage_ros2

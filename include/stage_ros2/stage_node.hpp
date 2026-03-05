@@ -6,6 +6,7 @@
 #include <std_srvs/srv/empty.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <stage_ros2/transform_broadcaster.h>
 #include <tf2/LinearMath/Transform.h>
 
@@ -56,6 +57,12 @@ private:
   // publisher for the simulated clock
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
 
+  // publisher for the occupancy grid map
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_pub_;
+
+  // timer for periodic map publishing
+  rclcpp::TimerBase::SharedPtr map_publish_timer_;
+
   /// called only ones to init the models and to crate for each model a link to ROS
   static int callback_init_stage_model(Stg::Model * mod, StageNode * node);
 
@@ -83,6 +90,9 @@ public:
   // to the first 'laser' model and the first 'position' model.  Returns
   // 0 on success (both models subscribed), -1 otherwise.
   int SubscribeModels();
+
+  // Publish the occupancy grid map from the stage world
+  void PublishMap();
 
   // Do one update of the world.  May pause if the next update time
   // has not yet arrived.
