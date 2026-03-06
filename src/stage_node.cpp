@@ -397,7 +397,7 @@ void StageNode::PublishMap()
   map_msg.info.origin.orientation.w = 1.0;
 
   // Allocate world raster buffer
-  std::vector<uint8_t> world_raster(width * height, 0);
+  std::vector<uint8_t> world_raster(width * height, 100);
 
   // Returns true if the model is a robot or any descendant of one
   auto is_robot_or_child = [](Stg::Model * m) {
@@ -449,7 +449,7 @@ void StageNode::PublishMap()
         int wy = oy + static_cast<int>(my);
         if (wx >= 0 && wx < static_cast<int>(width) &&
             wy >= 0 && wy < static_cast<int>(height)) {
-          if (model_raster[mx + my * model_w] > 0) {
+          if (model_raster[mx + my * model_w] == 0) {
             world_raster[wx + wy * width] = model_raster[mx + my * model_w];
           }
         }
