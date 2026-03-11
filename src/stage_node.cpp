@@ -239,6 +239,8 @@ int StageNode::callback_update_stage_world(Stg::World * world, StageNode * node)
       detector->publish_tf();
     }
   }
+
+  node->PublishMap();
   rosgraph_msgs::msg::Clock clock_msg;
   clock_msg.clock = node->sim_time_;
   node->clock_pub_->publish(clock_msg);
@@ -299,11 +301,6 @@ int StageNode::SubscribeModels()
   map_qos.transient_local();
   map_qos.reliable();
   map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", map_qos);
-
-  // create timer to publish map every 1 second
-  using namespace std::chrono_literals;
-  map_publish_timer_ = this->create_wall_timer(
-    1000ms, std::bind(&StageNode::PublishMap, this));
 
   // advertising reset service
   srv_reset_ = this->create_service<std_srvs::srv::Empty>(
