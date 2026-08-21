@@ -45,7 +45,7 @@ private:
   bool enforce_prefixes_;                  /// ROS parameter
   bool one_tf_tree_;                       /// ROS parameter
   bool enable_gui_;                        /// ROS parameter
-  bool publish_ground_truth_;              /// ROS parameter
+  bool publish_pose_;                      /// ROS parameter
   std::string world_file_;                 /// ROS parameter
 
   // TF broadcaster to publish the robot odom

@@ -1,6 +1,7 @@
 #include "stage_ros2/vehicle.hpp"
 #include "stage_ros2/stage_node.hpp"
 
+#include <geometry_msgs/msg/detail/pose_with_covariance_stamped__struct.hpp>
 #include <memory>
 
 namespace stage_ros2 {
@@ -8,7 +9,7 @@ namespace stage_ros2 {
 #define TOPIC_TF "tf"
 #define TOPIC_TF_STATIC "tf_static"
 #define TOPIC_ODOM "odom"
-#define TOPIC_GROUND_TRUTH "ground_truth"
+#define TOPIC_POSE "pose"
 #define TOPIC_CMD_VEL "cmd_vel"
 #define TOPIC_DRIVE "drive"
 
@@ -66,7 +67,7 @@ void Vehicle::init(bool use_topic_prefixes, bool use_one_tf_tree)
   frame_id_world_ = node_->frame_id_world_name_;
 
   topic_name_odom_ = topic_name_space_ + TOPIC_ODOM;
-  topic_name_ground_truth_ = topic_name_space_ + TOPIC_GROUND_TRUTH;
+  topic_name_pose_ = topic_name_space_ + TOPIC_POSE;
   topic_name_cmd_ = topic_name_space_ + TOPIC_CMD_VEL;
   topic_name_drive_ = topic_name_space_ + TOPIC_DRIVE;
 
@@ -74,8 +75,8 @@ void Vehicle::init(bool use_topic_prefixes, bool use_one_tf_tree)
   tf_broadcaster_ = std::make_shared<stage_ros2::TransformBroadcaster>(node_, topic_name_tf_.c_str());
 
   pub_odom_ = node_->create_publisher<nav_msgs::msg::Odometry>(topic_name_odom_, 10);
-  pub_ground_truth_ =
-      node_->create_publisher<nav_msgs::msg::Odometry>(topic_name_ground_truth_, 10);
+  pub_pose_ =
+      node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(topic_name_pose_, 10);
 
   if(node_->use_ackermann_){
       if(node_->use_stamped_velocity_){
@@ -146,7 +147,7 @@ void Vehicle::publish_msg()
 
   pub_odom_->publish(msg_odom_);
 
-  // Also publish the ground truth pose and velocity
+  // Also publish the pose and velocity
   Stg::Pose gpose = positionmodel->GetGlobalPose();
   tf2::Quaternion q_gpose;
   q_gpose.setRPY(0.0, 0.0, gpose.a);
@@ -172,23 +173,19 @@ void Vehicle::publish_msg()
     // There are no previous readings, adding current pose...
     global_pose_ = std::make_shared<Stg::Pose>(gpose);
   }
-  nav_msgs::msg::Odometry ground_truth_msg;
-  ground_truth_msg.pose.pose.position.x = gt.getOrigin().x();
-  ground_truth_msg.pose.pose.position.y = gt.getOrigin().y();
-  ground_truth_msg.pose.pose.position.z = gt.getOrigin().z();
-  ground_truth_msg.pose.pose.orientation.x = gt.getRotation().x();
-  ground_truth_msg.pose.pose.orientation.y = gt.getRotation().y();
-  ground_truth_msg.pose.pose.orientation.z = gt.getRotation().z();
-  ground_truth_msg.pose.pose.orientation.w = gt.getRotation().w();
-  ground_truth_msg.twist.twist.linear.x = gvel.x;
-  ground_truth_msg.twist.twist.linear.y = gvel.y;
-  ground_truth_msg.twist.twist.linear.z = gvel.z;
-  ground_truth_msg.twist.twist.angular.z = gvel.a;
+  geometry_msgs::msg::PoseWithCovarianceStamped pose_msg;
+  pose_msg.pose.pose.position.x = gt.getOrigin().x();
+  pose_msg.pose.pose.position.y = gt.getOrigin().y();
+  pose_msg.pose.pose.position.z = gt.getOrigin().z();
+  pose_msg.pose.pose.orientation.x = gt.getRotation().x();
+  pose_msg.pose.pose.orientation.y = gt.getRotation().y();
+  pose_msg.pose.pose.orientation.z = gt.getRotation().z();
+  pose_msg.pose.pose.orientation.w = gt.getRotation().w();
 
-  ground_truth_msg.header.frame_id = frame_id_world_;
-  ground_truth_msg.header.stamp = node_->sim_time_;
+  pose_msg.header.frame_id = frame_id_world_;
+  pose_msg.header.stamp = node_->sim_time_;
 
-  pub_ground_truth_->publish(ground_truth_msg);
+  pub_pose_->publish(pose_msg);
   time_last_pose_update_ = node_->sim_time_;
 }
 void Vehicle::publish_tf()

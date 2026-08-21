@@ -8,6 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <ackermann_msgs/msg/ackermann_drive.hpp>
 #include <ackermann_msgs/msg/ackermann_drive_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -48,7 +49,7 @@ private:
   std::string topic_name_tf_;
   std::string topic_name_tf_static_;
   std::string topic_name_odom_;
-  std::string topic_name_ground_truth_;
+  std::string topic_name_pose_;
   std::string frame_id_odom_;
   std::string frame_id_world_;
   nav_msgs::msg::Odometry msg_odom_;
@@ -85,7 +86,7 @@ public:
 
   // ros publishers
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;                     // one odom
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_ground_truth_;             // one ground truth
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_pose_;             // one ground truth
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_;                 // one cmd_vel subscriber
   rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr sub_cmd_stamped_;  // one sub_cmd_stamped_ subscriber
   rclcpp::Subscription<ackermann_msgs::msg::AckermannDrive>::SharedPtr sub_drive_;     // one drive subscriber

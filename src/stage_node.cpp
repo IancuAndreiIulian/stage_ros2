@@ -62,9 +62,9 @@ void StageNode::declare_parameters()
   param_desc_is_depth_canonical.description = "USE depth canonical!";
   this->declare_parameter<bool>("is_depth_canonical", true, param_desc_is_depth_canonical);
 
-  auto param_desc_publish_ground_truth = rcl_interfaces::msg::ParameterDescriptor{};
-  param_desc_publish_ground_truth.description = "publishes on true a ground truth tf!";
-  this->declare_parameter<bool>("publish_ground_truth", true, param_desc_publish_ground_truth);
+  auto param_desc_publish_pose = rcl_interfaces::msg::ParameterDescriptor{};
+  param_desc_publish_pose.description = "publishes on true a ground truth tf!";
+  this->declare_parameter<bool>("publish_pose", true, param_desc_publish_pose);
 
   auto param_desc_world_file = rcl_interfaces::msg::ParameterDescriptor{};
   param_desc_world_file.description = "USE model names!";
@@ -98,7 +98,7 @@ void StageNode::update_parameters()
   this->get_parameter("base_watchdog_timeout", base_watchdog_timeout_sec);
   this->base_watchdog_timeout_ = rclcpp::Duration::from_seconds(base_watchdog_timeout_sec);
   this->get_parameter("is_depth_canonical", this->isDepthCanonical_);
-  this->get_parameter("publish_ground_truth", this->publish_ground_truth_);
+  this->get_parameter("publish_pose", this->publish_pose_);
   this->get_parameter("frame_id_odom", this->frame_id_odom_name_);
   this->get_parameter("frame_id_world", this->frame_id_world_name_);
   this->get_parameter("frame_id_base_link", this->frame_id_base_link_name_);
@@ -131,7 +131,7 @@ void StageNode::callback_update_parameters()
 
   this->get_parameter("use_static_transformations", use_static_transformations_);
 
-  this->get_parameter("publish_ground_truth", this->publish_ground_truth_);
+  this->get_parameter("publish_pose", this->publish_pose_);
   // RCLCPP_INFO(this->get_logger(), "callback_update_parameter");
 }
 
